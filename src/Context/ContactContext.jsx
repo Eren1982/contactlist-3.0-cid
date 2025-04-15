@@ -8,6 +8,10 @@ export const ContactProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Recuperar fotos locales desde localStorage
+  const getPhotoMap = () => JSON.parse(localStorage.getItem("photoMap")) || {};
+  const setPhotoMap = (map) => localStorage.setItem("photoMap", JSON.stringify(map));
+
   useEffect(() => {
     fetchContacts();
   }, []);
@@ -16,14 +20,19 @@ export const ContactProvider = ({ children }) => {
     setLoading(true);
     try {
       const data = await getContacts();
-      console.log('API Response (fetchContacts):', data);
-      if (Array.isArray(data)) {
-        setContacts(data);
-      } else if (data && Array.isArray(data.contacts)) {
-        setContacts(data.contacts);
-      } else {
-        setContacts([]);
-      }
+      const photoMap = getPhotoMap();
+
+      let fetchedContacts = Array.isArray(data)
+        ? data
+        : data?.contacts || [];
+
+      // Reasignar fotos desde localStorage
+      fetchedContacts = fetchedContacts.map((c) => ({
+        ...c,
+        photo: photoMap[c.id] || '',
+      }));
+
+      setContacts(fetchedContacts);
       setLoading(false);
     } catch (err) {
       setError(err);
@@ -35,7 +44,12 @@ export const ContactProvider = ({ children }) => {
   const addContact = async (newContact) => {
     try {
       const result = await createContact(newContact);
-      console.log('API Response (addContact):', result);
+      const newId = result.id || result?.contact?.id;
+      if (newId && newContact.photo) {
+        const photoMap = getPhotoMap();
+        photoMap[newId] = newContact.photo;
+        setPhotoMap(photoMap);
+      }
       setTimeout(fetchContacts, 100);
     } catch (err) {
       setError(err);
@@ -45,6 +59,11 @@ export const ContactProvider = ({ children }) => {
   const editContact = async (id, updatedContact) => {
     try {
       await updateContact(id, updatedContact);
+      if (updatedContact.photo) {
+        const photoMap = getPhotoMap();
+        photoMap[id] = updatedContact.photo;
+        setPhotoMap(photoMap);
+      }
       fetchContacts();
     } catch (err) {
       setError(err);
@@ -53,8 +72,10 @@ export const ContactProvider = ({ children }) => {
 
   const removeContact = async (id) => {
     try {
-      console.log('Removing contact with ID:', id);
       await deleteContact(id);
+      const photoMap = getPhotoMap();
+      delete photoMap[id];
+      setPhotoMap(photoMap);
       fetchContacts();
     } catch (err) {
       setError(err);
