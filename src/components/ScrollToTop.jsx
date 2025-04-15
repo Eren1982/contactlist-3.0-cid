@@ -1,26 +1,45 @@
-import { useEffect, useRef } from "react";
-import PropTypes from "prop-types";
+import React, { useEffect, useState } from 'react';
 
-// This component allows the scroll to go to the beginning when changing the view,
-// otherwise it would remain in the position of the previous view. 
-// Investigate more about this React behavior :D 
+const ScrollToTop = () => {
+  const [isVisible, setIsVisible] = useState(false);
 
-const ScrollToTop = ({ location, children }) => {
-    const prevLocation = useRef(location);
+  useEffect(() => {
+    const toggleVisibility = () => {
+      if (window.pageYOffset > 300) {
+        setIsVisible(true);
+      } else {
+        setIsVisible(false);
+      }
+    };
 
-    useEffect(() => {
-        if (location !== prevLocation.current) {
-            window.scrollTo(0, 0);
-        }
-        prevLocation.current = location;
-    }, [location]);
+    window.addEventListener('scroll', toggleVisibility);
 
-    return children;
+    return () => window.removeEventListener('scroll', toggleVisibility);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  };
+
+  return (
+    isVisible && (
+      <button
+        onClick={scrollToTop}
+        className="scroll-to-top btn btn-dark"
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          zIndex: '100',
+        }}
+      >
+        ^
+      </button>
+    )
+  );
 };
 
 export default ScrollToTop;
-
-ScrollToTop.propTypes = {
-    location: PropTypes.object,
-    children: PropTypes.any
-};
